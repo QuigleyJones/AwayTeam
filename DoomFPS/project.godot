@@ -19,6 +19,14 @@ config/name="DoomFPS"
 run/main_scene="res://World.tscn"
 config/icon="res://icon.png"
 
+[debug]
+
+settings/stdout/print_fps=true
+
+[display]
+
+window/size/fullscreen=true
+
 [importer_defaults]
 
 texture={
