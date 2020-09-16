@@ -1,19 +1,78 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://characters/Player/Player.gd" type="Script" id=1]
+[ext_resource path="res://characters/HealthManager.gd" type="Script" id=1]
 [ext_resource path="res://characters/CharacterMover.gd" type="Script" id=2]
 
-[sub_resource type="CapsuleShape" id=1]
+[sub_resource type="GDScript" id=1]
+script/source = "extends KinematicBody
+
+
+export var mouse_sens = 0.5
+
+onready var camera = $Camera
+onready var character_mover = $CharacterMover
+onready var health_manager = $HealthManager
+
+var dead = false
+
+func _ready():
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	character_mover.init(self)
+	health_manager.init()
+	health_manager.connect(\"dead\", self, \"kill\")
+
+func _process(_delta):
+	if Input.is_action_just_pressed(\"exit\"):
+		get_tree().quit()
+	
+	if dead:
+		return
+	
+	var move_vec = Vector3()
+	if Input.is_action_pressed(\"move_forward\"):
+		move_vec += Vector3.FORWARD
+	if Input.is_action_pressed(\"move_backward\"):
+		move_vec += Vector3.BACK
+	if Input.is_action_pressed(\"move_left\"):
+		move_vec += Vector3.LEFT
+	if Input.is_action_pressed(\"move_right\"):
+		move_vec += Vector3.RIGHT
+	character_mover.set_move_vec(move_vec)
+	if Input.is_action_just_pressed(\"jump\"):
+		character_mover.jump()
+	if Input.is_action_pressed(\"sprint\"):
+		character_mover.sprint(true)
+	else:
+		character_mover.sprint(false)
+
+func _input(event):
+	if event is InputEventMouseMotion:
+		rotation_degrees.y -= mouse_sens * event.relative.x
+		camera.rotation_degrees.x -= mouse_sens * event.relative.y
+		camera.rotation_degrees.x = clamp(camera.rotation_degrees.x, -90, 90)
+
+func hurt(damage, dir):
+	health_manager.hurt(damage, dir)
+
+func heal(amount):
+	health_manager.heal(amount)
+
+func kill():
+	dead = true
+	character_mover.freeze()
+"
+
+[sub_resource type="CapsuleShape" id=2]
 radius = 0.5
 
 [node name="Player" type="KinematicBody"]
 collision_layer = 2
 collision_mask = 2147483651
-script = ExtResource( 1 )
+script = SubResource( 1 )
 
 [node name="CollisionShape" type="CollisionShape" parent="."]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 1, 0 )
-shape = SubResource( 1 )
+shape = SubResource( 2 )
 
 [node name="Camera" type="Camera" parent="."]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0 )
@@ -22,3 +81,9 @@ current = true
 [node name="CharacterMover" type="Spatial" parent="."]
 script = ExtResource( 2 )
 jump_force = 10
+
+[node name="HealthManager" type="Spatial" parent="."]
+script = ExtResource( 1 )
+
+[node name="Timer" type="Timer" parent="."]
+[connection signal="timeout" from="Timer" to="." method="hurt" binds= [ 5, Vector3( 0, 0, 0 ) ]]
