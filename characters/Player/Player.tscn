@@ -1,17 +1,34 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=11 format=2]
 
 [ext_resource path="res://characters/HealthManager.gd" type="Script" id=1]
 [ext_resource path="res://characters/CharacterMover.gd" type="Script" id=2]
+[ext_resource path="res://characters/Player/WeaponManager.gd" type="Script" id=3]
+[ext_resource path="res://resources/machinegun.glb" type="PackedScene" id=4]
+[ext_resource path="res://resources/anim/machete_idle.tres" type="Animation" id=5]
+[ext_resource path="res://resources/machete.glb" type="PackedScene" id=7]
 
 [sub_resource type="GDScript" id=1]
 script/source = "extends KinematicBody
 
+var hotkeys = {
+	KEY_1: 0,
+	KEY_2: 1,
+	KEY_3: 2,
+	KEY_4: 3,
+	KEY_5: 4,
+	KEY_6: 5,
+	KEY_7: 6,
+	KEY_8: 7,
+	KEY_9: 8,
+	KEY_0: 9,
+}
 
 export var mouse_sens = 0.5
 
 onready var camera = $Camera
 onready var character_mover = $CharacterMover
 onready var health_manager = $HealthManager
+onready var weapon_manager = $Camera/WeaponManager
 
 var dead = false
 
@@ -40,16 +57,20 @@ func _process(_delta):
 	character_mover.set_move_vec(move_vec)
 	if Input.is_action_just_pressed(\"jump\"):
 		character_mover.jump()
-	if Input.is_action_pressed(\"sprint\"):
-		character_mover.sprint(true)
-	else:
-		character_mover.sprint(false)
 
 func _input(event):
 	if event is InputEventMouseMotion:
 		rotation_degrees.y -= mouse_sens * event.relative.x
 		camera.rotation_degrees.x -= mouse_sens * event.relative.y
 		camera.rotation_degrees.x = clamp(camera.rotation_degrees.x, -90, 90)
+	if event is InputEventKey and event.pressed:
+		if event.scancode in hotkeys:
+			weapon_manager.switch_to_weapon_slot(hotkeys[event.scancode])
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == BUTTON_WHEEL_DOWN:
+			weapon_manager.switch_to_next_weapon()
+		if event.button_index == BUTTON_WHEEL_UP:
+			weapon_manager.switch_to_last_weapon()
 
 func hurt(damage, dir):
 	health_manager.hurt(damage, dir)
@@ -65,6 +86,61 @@ func kill():
 [sub_resource type="CapsuleShape" id=2]
 radius = 0.5
 
+[sub_resource type="Animation" id=3]
+resource_name = "attack"
+length = 0.6
+tracks/0/type = "value"
+tracks/0/path = NodePath("Graphics:translation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.1, 0.6 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Vector3( 0.0237617, 0, -0.0612475 ), Vector3( 0.103062, 0.139717, -0.684591 ), Vector3( 0.024, 0, -0.061 ) ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Graphics:rotation_degrees")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0, 0.1, 0.6 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Vector3( 23.539, 0, 0 ), Vector3( -65.8859, 127.117, -137.809 ), Vector3( 23.539, 0, 0 ) ]
+}
+
+[sub_resource type="Animation" id=4]
+resource_name = "idle"
+tracks/0/type = "value"
+tracks/0/path = NodePath("Graphics/machinegun:translation")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 0,
+"values": [ Vector3( 0, 0, 0 ) ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Graphics/machinegun:rotation_degrees")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 0,
+"values": [ Vector3( 0, 0, 0 ) ]
+}
+
 [node name="Player" type="KinematicBody"]
 collision_layer = 2
 collision_mask = 2147483651
@@ -78,12 +154,43 @@ shape = SubResource( 2 )
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0 )
 current = true
 
+[node name="WeaponManager" type="Spatial" parent="Camera"]
+script = ExtResource( 3 )
+
+[node name="Weapons" type="Spatial" parent="Camera/WeaponManager"]
+
+[node name="Machete" type="Spatial" parent="Camera/WeaponManager/Weapons"]
+visible = false
+
+[node name="Graphics" type="Spatial" parent="Camera/WeaponManager/Weapons/Machete"]
+
+[node name="machete" parent="Camera/WeaponManager/Weapons/Machete/Graphics" instance=ExtResource( 7 )]
+transform = Transform( 0.145637, 0, 0, 0, 0.145637, 0, 0, 0, 0.145637, 0.175323, -0.166948, -0.234658 )
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Camera/WeaponManager/Weapons/Machete"]
+anims/attack = SubResource( 3 )
+anims/idle = ExtResource( 5 )
+
+[node name="MachineGun" type="Spatial" parent="Camera/WeaponManager/Weapons"]
+transform = Transform( 0.146, 0, 0, 0, 0.146, 0, 0, 0, 0.146, 0.185, -0.134, -0.235 )
+
+[node name="Graphics" type="Spatial" parent="Camera/WeaponManager/Weapons/MachineGun"]
+
+[node name="machinegun" parent="Camera/WeaponManager/Weapons/MachineGun/Graphics" instance=ExtResource( 4 )]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Camera/WeaponManager/Weapons/MachineGun"]
+autoplay = "idle"
+anims/idle = SubResource( 4 )
+
+[node name="Shotgun" type="Spatial" parent="Camera/WeaponManager/Weapons"]
+visible = false
+
+[node name="RocketLauncher" type="Spatial" parent="Camera/WeaponManager/Weapons"]
+visible = false
+
 [node name="CharacterMover" type="Spatial" parent="."]
 script = ExtResource( 2 )
 jump_force = 10
 
 [node name="HealthManager" type="Spatial" parent="."]
 script = ExtResource( 1 )
-
-[node name="Timer" type="Timer" parent="."]
-[connection signal="timeout" from="Timer" to="." method="hurt" binds= [ 5, Vector3( 0, 0, 0 ) ]]
